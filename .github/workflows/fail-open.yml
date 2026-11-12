@@ -1,0 +1,64 @@
+name: FailOpen
+on:
+  pull_request:
+    types: [opened, synchronize]
+jobs:
+  g_step:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.gate.outputs.should-run }}
+    steps:
+      - id: gate
+        continue-on-error: true
+        run: exit 1
+  a_after_step_fail:
+    needs: g_step
+    if: ${{ !cancelled() && needs.g_step.outputs.should-run != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "ran; should-run='${{ needs.g_step.outputs.should-run }}' result=${{ needs.g_step.result }}"
+  g_partial:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.gate.outputs.should-run }}
+    steps:
+      - id: gate
+        continue-on-error: true
+        run: |
+          echo "should-run=false" >> "$GITHUB_OUTPUT"
+          exit 1
+  b_after_partial:
+    needs: g_partial
+    if: ${{ !cancelled() && needs.g_partial.outputs.should-run != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "ran; should-run='${{ needs.g_partial.outputs.should-run }}'"
+  g_bad_uses:
+    runs-on: ubuntu-latest
+    outputs:
+      should-run: ${{ steps.gate.outputs.should-run }}
+    steps:
+      - id: gate
+        continue-on-error: true
+        uses: raulgg/stack-ci-gate@no-such-ref
+  c_new_recipe:
+    needs: g_bad_uses
+    if: ${{ !cancelled() && needs.g_bad_uses.outputs.should-run != 'false' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "ran; result=${{ needs.g_bad_uses.result }}"
+  c_old_recipe:
+    needs: g_bad_uses
+    if: needs.g_bad_uses.outputs.should-run == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo ran
+  one_job:
+    runs-on: ubuntu-latest
+    steps:
+      - id: gate
+        continue-on-error: true
+        run: exit 1
+      - if: steps.gate.outputs.should-run != 'false'
+        run: echo "gated step ran"
+      - run: echo "outcome=${{ steps.gate.outcome }} conclusion=${{ steps.gate.conclusion }}"

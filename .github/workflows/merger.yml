@@ -1,0 +1,19 @@
+name: Merger
+on:
+  pull_request:
+    types: [opened, reopened]
+permissions:
+  contents: write
+  pull-requests: write
+jobs:
+  merge-bottom:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TARGET: "27"
+    steps:
+      - run: gh api user -q .login || gh api graphql -f query='{viewer{login}}'
+      - run: gh pr view "$TARGET" --repo "$GITHUB_REPOSITORY" --json mergeStateStatus,mergeable,baseRefName
+      - run: gh pr merge "$TARGET" --repo "$GITHUB_REPOSITORY" --squash
+      - if: always()
+        run: gh pr view "$TARGET" --repo "$GITHUB_REPOSITORY" --json state,mergedBy,mergeCommit

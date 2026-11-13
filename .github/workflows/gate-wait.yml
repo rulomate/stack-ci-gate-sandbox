@@ -12,7 +12,7 @@ jobs:
       should-run: ${{ steps.gate.outputs.should-run }}
     steps:
       - id: gate
-        uses: raulgg/stack-ci-gate@c303b30ba56219c1cba32f01c3637996fd3d4e78
+        uses: raulgg/stack-ci-gate@48ae7c249a6d5ab9f590b25fdc5c9ef4aacf4b70
         continue-on-error: true
       - name: Show gate outputs
         env:

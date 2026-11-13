@@ -1,7 +1,7 @@
 name: Merger
 on:
   pull_request:
-    types: [opened, reopened]
+    types: [opened, reopened, synchronize]
 permissions:
   contents: write
   pull-requests: write
@@ -12,8 +12,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       TARGET: "27"
     steps:
-      - run: gh api user -q .login || gh api graphql -f query='{viewer{login}}'
-      - run: gh pr view "$TARGET" --repo "$GITHUB_REPOSITORY" --json mergeStateStatus,mergeable,baseRefName
-      - run: gh pr merge "$TARGET" --repo "$GITHUB_REPOSITORY" --squash
+      - uses: actions/checkout@v4
+      - run: gh extension install github/gh-stack
+      - run: gh pr view "$TARGET" --json mergeStateStatus,mergeable,baseRefName
+      - run: GH_DEBUG=api gh stack merge "$TARGET" --yes --squash 2>&1 | grep -vi "authorization"
       - if: always()
-        run: gh pr view "$TARGET" --repo "$GITHUB_REPOSITORY" --json state,mergedBy,mergeCommit
+        run: sleep 20; gh pr view "$TARGET" --json state,mergedBy,mergeCommit

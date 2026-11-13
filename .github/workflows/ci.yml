@@ -1,17 +1,25 @@
 name: CI
 on:
   pull_request:
-    types: [opened, synchronize, reopened]
-  workflow_dispatch:
+    types: [opened, synchronize, reopened, edited]
 jobs:
   gate:
     runs-on: ubuntu-latest
+    timeout-minutes: 1
+    outputs:
+      should-run: ${{ steps.gate.outputs.should-run }}
     steps:
-      - run: echo "event=${{ github.event_name }} sha=${{ github.sha }}"
+      - run: sleep 90
+      - id: gate
+        continue-on-error: true
+        run: echo "should-run=true" >> "$GITHUB_OUTPUT"
   test:
     needs: gate
-    if: ${{ !cancelled() }}
+    if: ${{ !cancelled() && needs.gate.result != 'skipped' && needs.gate.outputs.should-run != 'false' }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: if [ -f fail.txt ] && [ "$GITHUB_EVENT_NAME" = pull_request ]; then echo "fail.txt present"; exit 1; fi
+      - env:
+          GATE_RESULT: ${{ needs.gate.result }}
+          SHOULD_RUN: ${{ needs.gate.outputs.should-run }}
+        run: echo "needs.gate.result=$GATE_RESULT should-run=[$SHOULD_RUN]"
+
